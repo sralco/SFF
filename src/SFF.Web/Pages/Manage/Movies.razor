@@ -1,0 +1,248 @@
+@page "/Movies"
+
+@using SFF.Core.Entities
+@using SFF.Core.Data
+@using SFF.Core.Constants
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IDbContextFactory<SFFDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.SignalR.Client
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Hantera filmer</MudText>
+<AuthorizeView>
+    <NotAuthorized>
+        <MudText Typo="Typo.subtitle2" Color="Color.Dark" Class="ml-4 my-3">Du är inte inloggad</MudText>
+    </NotAuthorized>
+
+    <Authorized>
+        <MudTable Items="@_movies">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 10%;" />
+                <col style="width: 40%;" />
+                <col style="width: 10%;" />
+                <col style="width: 10%;" />
+                <col style="width: 10%;" />
+                <col style="width: 3%;" />
+                <col style="width: 3%;" />
+                <col style="width: 3%;" />
+                <col style="width: 3%;" />
+                <col style="width: 3%;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Titel</MudTh>
+                <MudTh>Beskrivning</MudTh>
+                <MudTh>Utgivningsår</MudTh>
+                <MudTh>Kategori</MudTh>
+                <MudTh>Land</MudTh>
+                <MudTh>Digitala licenser</MudTh>
+                <MudTh>Fysiska kopior</MudTh>
+                <MudTh>Digital</MudTh>
+                <MudTh>Fysisk</MudTh>
+                <MudTh>Ta bort</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="movie">
+                <MudTd DataLabel="Id">@movie.Id</MudTd>
+                <MudTd DataLabel="Title">
+                    <MudItem>
+                        <MudTextField @bind-Value=movie.Title onchange="@UpdateDb(movie)" Variant="Variant.Text"
+                            Lines=2></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Description">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(movie)" @bind-Value=movie.Description Variant="Variant.Text"
+                            Lines=2></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="ReseaseYear">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(movie)" @bind-Value=movie.ReleaseYear Variant="Variant.Text">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Genre">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(movie)" @bind-Value=movie.Genre Variant="Variant.Text">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Country">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(movie)" @bind-Value=movie.Country Variant="Variant.Text">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="NbrOfLicenses">
+                    <MudItem>
+                        <MudTextField onchange="@ResetLicenses(movie)" @bind-Value=movie.NbrOfLicenses
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="NbrOfPhysicalCopies">
+                    <MudItem>
+                        <MudTextField onchange="@ResetLicenses(movie)" @bind-Value=movie.NbrOfPhysicalCopies
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="IsDigital">
+                    <MudCheckBox onclick="@ResetLicenses(movie)" @bind-Checked=movie.IsDigital Color="Color.Info">
+                    </MudCheckBox>
+                </MudTd>
+                <MudTd DataLabel="IsPhysical">
+                    <MudCheckBox onclick="@ResetLicenses(movie)" @bind-Checked=movie.IsPhysical Color="Color.Info">
+                    </MudCheckBox>
+                </MudTd>
+                <MudTd DataLabel="Delete">
+                    <MudIconButton OnClick="@(() => DeleteFromDb(movie))" Icon="@Icons.Material.Filled.Delete"
+                        Color="Color.Error" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        <MudBadge />
+        <MudTable Items="@_newMovie">
+            <ColGroup>
+                <col style="width: 20px;" />
+                <col style="width: 10%;" />
+                <col style="width: 40%;" />
+                <col style="width: 10%;" />
+                <col style="width: 10%;" />
+                <col style="width: 10%;" />
+                <col style="width: 5%;" />
+                <col style="width: 5%;" />
+                <col style="width: 5%;" />
+                <col style="width: 5%;" />
+                <col style="width: 3%;" />
+            </ColGroup>
+            <HeaderContent></HeaderContent>
+            <RowTemplate Context="newMovie">
+                <MudTd DataLabel="Id"></MudTd>
+                <MudTd DataLabel="Title">
+                    <MudItem>
+                        <MudTextField @bind-Value=newMovie.Title Variant="Variant.Text" Lines=2></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Description">
+                    <MudItem>
+                        <MudTextField @bind-Value=newMovie.Description Variant="Variant.Text" Lines=2></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="ReseaseYear">
+                    <MudItem>
+                        <MudTextField @bind-Value=newMovie.ReleaseYear Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Genre">
+                    <MudItem>
+                        <MudSelect Label="Välj kategori" @bind-Value=newMovie.Genre>
+                            @foreach (Genre item in Enum.GetValues(typeof(Genre)))
+                                {
+                            <MudSelectItem Value="@item">@item</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Country">
+                    <MudItem>
+                        <MudSelect Label="Välj land" @bind-Value=newMovie.Country>
+                            @foreach (Country item in Enum.GetValues(typeof(Country)))
+                                {
+                            <MudSelectItem Value="@item">@item</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="NbrOfLicenses">
+                    <MudItem>
+                        <MudTextField @bind-Value=newMovie.NbrOfLicenses Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="NbrOfPhysicalCopies">
+                    <MudItem>
+                        <MudTextField @bind-Value=newMovie.NbrOfPhysicalCopies Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="IsDigital">
+                    <MudCheckBox @bind-Checked=newMovie.IsDigital Color="Color.Info"></MudCheckBox>
+                </MudTd>
+                <MudTd DataLabel="IsPhysical">
+                    <MudCheckBox @bind-Checked=newMovie.IsPhysical Color="Color.Info"></MudCheckBox>
+                </MudTd>
+                <MudTd DataLabel="Add">
+                    <MudIconButton OnClick="@(() => AddToDb(newMovie))" Icon="@Icons.Material.Filled.Add"
+                        Color="Color.Tertiary" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+    private IEnumerable<Movie> _movies = new List<Movie>();
+    private List<Movie> _newMovie = new List<Movie>();
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/movieHub"))
+            .Build();
+        hubConnection.On("LaddaAldrigOmTack", async () =>
+        {
+            using var context = DbFactory.CreateDbContext();
+            _movies = await context.Movies.ToListAsync();
+            await InvokeAsync(() => StateHasChanged());
+        });
+        await hubConnection.StartAsync();
+        using var context = DbFactory.CreateDbContext();
+        _movies = await context.Movies.ToListAsync();
+        _newMovie.Clear();
+        _newMovie.Add(new Movie());
+    }
+
+    private async Task UpdateDb(Movie movie)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Movies.Update(movie);
+        await context.SaveChangesAsync();
+        await Send();
+    }
+    private async Task DeleteFromDb(Movie movie)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Movies.Remove(movie);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task AddToDb(Movie movie)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Movies.Add(movie);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task ResetLicenses(Movie movie)
+    {
+        if (!movie.IsDigital) movie.NbrOfLicenses = 0;
+        if (!movie.IsPhysical) movie.NbrOfPhysicalCopies = 0;
+        await UpdateDb(movie);
+    }
+
+    Task Send() => 
+        hubConnection.SendAsync("Send");
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}

@@ -1,0 +1,84 @@
+@inherits LayoutComponentBase
+
+
+<MudThemeProvider Theme="_themeManager.Theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="4" Color="Color.Info">
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudIcon Icon="@Icons.Material.Outlined.MovieFilter" Size="Size.Large" />
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                OnClick="@((e) => DrawerToggle())" />
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudText Typo="Typo.h6" Class="ml-4">Sveriges Förenade Filmföreningar</MudText>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
+            <MudText Typo="Typo.subtitle2">Sveriges Förenade Filmföreningar</MudText>
+        </MudHidden>
+        <MudHidden>
+            <AuthorizeView>
+                <Authorized>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Dark" Class="ml-4 my-3">Inloggad som
+                        @context.User.Identity.Name</MudText>
+                </Authorized>
+            </AuthorizeView>
+        </MudHidden>
+        <MudAppBarSpacer />
+        <MudMenu Icon="@Icons.Material.Outlined.AccountCircle" Direction="Direction.Left" OffsetX="true" Dense="true"
+            Class="mt-1 ml-4">
+            <AuthorizeView>
+                <Authorized>
+                    <MudNavLink Icon="@Icons.Material.Outlined.Person" Href="/Identity/Account/Manage">Konto
+                    </MudNavLink>
+                    <MudDivider Class="mb-2" />
+                    <MudNavLink Icon="@Icons.Material.Outlined.Login" Href="/Identity/Account/Logout?returnUrl=%2F">
+                        Logga ut</MudNavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <MudNavLink Icon="@Icons.Material.Outlined.Login" Href="/Identity/Account/Login">Logga in
+                    </MudNavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+
+        </MudMenu>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="25" ClipMode="_themeManager.DrawerClipMode">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudToolBar DisableGutters="true">
+                <MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit"
+                    OnClick="@((e) => DrawerToggle())" Class="ml-3" />
+                <MudToolBarSpacer />
+            </MudToolBar>
+        </MudHidden>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+
+@code {
+    private ThemeManagerTheme _themeManager = new ThemeManagerTheme();
+
+    public bool _drawerOpen = true;
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    protected override void OnInitialized()
+    {
+        _themeManager.DrawerClipMode = DrawerClipMode.Always;
+        _themeManager.FontFamily = "Montserrat";
+        _themeManager.DefaultBorderRadius = 3;
+    }
+}

@@ -1,0 +1,189 @@
+@page "/Reviews"
+
+@using SFF.Core.Entities
+@using SFF.Core.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IDbContextFactory<SFFDbContext> DbFactory
+@inject IReviewService reviewService
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.SignalR.Client
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Hantera recensioner</MudText>
+<AuthorizeView>
+    <NotAuthorized>
+        <MudText Typo="Typo.subtitle2" Color="Color.Dark" Class="ml-4 my-3">Du är inte inloggad</MudText>
+    </NotAuthorized>
+
+    <Authorized>
+
+        <MudTable Items="@_reviews">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 21%;" />
+                <col style="width: 21%;" />
+                <col style="width: 31%;" />
+                <col style="width: 11%;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Förening</MudTh>
+                <MudTh>Film</MudTh>
+                <MudTh>Kommentar</MudTh>
+                <MudTh>Betyg</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="review">
+                <MudTd DataLabel="Id">@review.Id</MudTd>
+                <MudTd DataLabel="Association">
+                    <MudItem>
+                        <MudTextField @bind-Value=review.Association.Name Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Movie">
+                    <MudItem>
+                        <MudTextField @bind-Value=review.Movie.Title Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Comment">
+                    <MudItem>
+                        <MudTextField @bind-Value=review.Comment Variant="Variant.Text" ReadOnly="true"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Rating">
+                    <MudItem>
+                        <MudTextField @bind-Value=review.Rating Variant="Variant.Text" ReadOnly="true"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Delete">
+                    <MudIconButton OnClick="@(() => DeleteFromDb(review))" Icon="@Icons.Material.Filled.Delete"
+                        Color="Color.Error" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        <MudBadge />
+        <MudTable Items="@_newReview">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+                <col style="width: 35%;" />
+                <col style="width: 20%;" />
+            </ColGroup>
+            <HeaderContent></HeaderContent>
+            <RowTemplate Context="newReview">
+                <MudTd DataLabel="Id"></MudTd>
+                <MudTd DataLabel="Association">
+                    <MudSelect onclick="@GetMoviesByAssociation(newReview.AssociationId)"
+                        @bind-Value=newReview.AssociationId Label="Välj förening">
+                        @foreach (var item in _association)
+                            {
+                        <MudSelectItem Value=@item.Id>@item.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="Movie">
+                    <MudSelect @bind-Value=newReview.MovieId Label="Välj film">
+                        @foreach (var item in _moviesToReview)
+                            {
+                        <MudSelectItem Value=@item.Id>@item.Title</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="Comment">
+                    <MudItem>
+                        <MudTextField @bind-Value=newReview.Comment Variant="Variant.Text" Lines=2></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Rating">
+                    <MudSelect @bind-Value=newReview.Rating Label="Välj Betyg">
+                        <MudSelectItem Value="1">1</MudSelectItem>
+                        <MudSelectItem Value="2">2</MudSelectItem>
+                        <MudSelectItem Value="3">3</MudSelectItem>
+                        <MudSelectItem Value="4">4</MudSelectItem>
+                        <MudSelectItem Value="5">5</MudSelectItem>
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="Add">
+                    <MudIconButton OnClick="@(() => AddToDb(newReview))" Icon="@Icons.Material.Filled.Add"
+                        Color="Color.Tertiary" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+    private IEnumerable<Review> _reviews = new List<Review>();
+    private IEnumerable<Movie> _movies = new List<Movie>();
+    private List<Movie> _moviesToReview = new List<Movie>();
+    private IEnumerable<Association> _association = new List<Association>();
+    private List<Review> _newReview = new List<Review>();
+    private IReviewService _reviewService;
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/reviewHub"))
+            .Build();
+        hubConnection.On("LaddaAldrigOmTack", async () =>
+        {
+            using var context = DbFactory.CreateDbContext();
+            _reviews = await context.Reviews.Include(m => m.Movie).Include(a => a.Association).ToListAsync();
+            await InvokeAsync(() => StateHasChanged());
+        });
+        await hubConnection.StartAsync();
+        _reviewService = reviewService;
+        using var context = DbFactory.CreateDbContext();
+        _reviews = await context.Reviews.Include(m => m.Movie).Include(a => a.Association).ToListAsync();
+        _association = await context.Associations.ToListAsync();
+        _newReview.Clear();
+        _newReview.Add(new Review());
+
+    }
+
+    private async Task DeleteFromDb(Review review)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Reviews.Remove(review);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task AddToDb(Review review)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Reviews.Add(review);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task GetMoviesByAssociation(int associationId)
+    {
+        using var context = DbFactory.CreateDbContext();
+        _movies = await context.Lendings.Where(a => a.AssociationId == associationId).Select(m => m.Movie).ToListAsync();
+        foreach (var movie in _movies)
+        {
+            if (!_reviewService.DoReviewExist(context, movie.Id, associationId))
+            {
+                _moviesToReview.Add(movie);
+            }
+        }
+    }
+
+    Task Send() =>
+        hubConnection.SendAsync("Send");
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}

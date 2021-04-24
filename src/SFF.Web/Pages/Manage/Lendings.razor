@@ -1,0 +1,223 @@
+@page "/Lendings"
+
+@using Core.Constants
+@using Microsoft.AspNetCore.SignalR.Client
+@using SFF.Core.Entities
+@using SFF.Core.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IDbContextFactory<SFFDbContext> DbFactory
+@inject ILendingService lendingService
+@inject NavigationManager NavigationManager
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Hantera lån av filmer</MudText>
+<AuthorizeView>
+    <NotAuthorized>
+        <MudText Typo="Typo.subtitle2" Color="Color.Dark" Class="ml-4 my-3">Du är inte inloggad</MudText>
+    </NotAuthorized>
+
+    <Authorized>
+
+
+        <MudItem xs="12" md="6">
+            <MudPaper Width="100%">
+                <MudSelect @bind-Value=_associationId Label="Välj förening">
+                    <MudSelectItem Value="0">Alla</MudSelectItem>
+                    @foreach (var item in _associations)
+                            {
+                    <MudSelectItem Value=@item.Id>@item.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudPaper>
+        </MudItem>
+
+
+
+        <MudTable Items="@FilterByAssociation()">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+                <col style="width: 10%;" />
+                <col style="width: 15%;" />
+                <col style="width: 20%;" />
+                <col style="width: 5%;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Förening</MudTh>
+                <MudTh>Film</MudTh>
+                <MudTh>Filmformat</MudTh>
+                <MudTh>Lånedatum</MudTh>
+                <MudTh>Återlämnas senast</MudTh>
+                <MudTh>Återlämnad</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="lending">
+                <MudTd DataLabel="Id">@lending.Id</MudTd>
+                <MudTd DataLabel="Association">
+                    <MudItem>
+                        <MudTextField @bind-Value=lending.Association.Name Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Movie">
+                    <MudItem>
+                        <MudTextField @bind-Value=lending.Movie.Title Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="MovieFormat">
+                    <MudItem>
+                        <MudTextField @bind-Value=lending.MovieFormat Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="LendingDate">
+                    <MudItem>
+                        <MudTextField @bind-Value=lending.LendingDate Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="ReturnDate">
+                    <MudItem>
+                        <MudTextField @bind-Value=lending.ReturnDate Variant="Variant.Text" ReadOnly="true">
+                        </MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Returned">
+                    <MudCheckBox onclick="@UpdateDb(lending)" @bind-Checked=lending.Returned Color="Color.Info">
+                    </MudCheckBox>
+                </MudTd>
+                <MudTd DataLabel="Delete">
+                    <MudIconButton OnClick="@(async() => await DeleteFromDb(lending))" Icon="@Icons.Material.Filled.Delete"
+                        Color="Color.Error" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        <MudBadge />
+        <MudTable Items="@_newLending">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+                <col style="width: 10%;" />
+                <col style="width: 20%;" />
+            </ColGroup>
+            <HeaderContent></HeaderContent>
+            <RowTemplate Context="newLending">
+                <MudTd DataLabel="Id"></MudTd>
+                <MudTd DataLabel="Association">
+                    <MudSelect @bind-Value=newLending.AssociationId Label="Välj förening">
+                        @foreach (var item in _associations)
+                            {
+                        <MudSelectItem Value=@item.Id>@item.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="Movie">
+                    <MudSelect @bind-Value=newLending.MovieId Label="Välj film">
+                        @foreach (var item in _movies)
+                            {
+                        <MudSelectItem Value=@item.Id>@item.Title</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="MovieFormat">
+                    <MudSelect @bind-Value=newLending.MovieFormat>
+                        <MudSelectItem Value="@MovieFormat.Digital">Digital</MudSelectItem>
+                        <MudSelectItem Value="@MovieFormat.Physical">Fysisk</MudSelectItem>
+                    </MudSelect>
+                </MudTd>
+                <MudTd DataLabel="ReturnDate">
+                    <MudItem>
+                        <MudDatePicker Label="Returdatum" @bind-Date="_returnDate" />
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Add">
+                    <MudIconButton OnClick="@(() => AddToDb(newLending))" Icon="@Icons.Material.Filled.Add"
+                        Color="Color.Tertiary" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+    private IEnumerable<Lending> _lendings = new List<Lending>();
+    private IEnumerable<Movie> _movies = new List<Movie>();
+    private IEnumerable<Association> _associations = new List<Association>();
+    private List<Lending> _newLending = new List<Lending>();
+    private ILendingService _lendingService;
+    private DateTime? _returnDate = DateTime.Today;
+    private int _associationId = 0;
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/lendingHub"))
+            .Build();
+        hubConnection.On("LaddaAldrigOmTack", async () =>
+        {
+            using var context = DbFactory.CreateDbContext();
+            _lendings = await context.Lendings.Include(m => m.Movie).Include(a => a.Association).ToListAsync();
+            await InvokeAsync(() => StateHasChanged());
+        });
+        await hubConnection.StartAsync();
+        _lendingService = lendingService;
+        using var context = DbFactory.CreateDbContext();
+        _lendings = await context.Lendings.Include(m => m.Movie).Include(a => a.Association).ToListAsync();
+        _movies = await context.Movies.ToListAsync();
+        _associations = await context.Associations.ToListAsync();
+        _newLending.Clear();
+        _newLending.Add(new Lending());
+    }
+
+    private async Task UpdateDb(Lending lending)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Lendings.Update(lending);
+        await context.SaveChangesAsync();
+        await Send();
+    }
+
+    private async Task DeleteFromDb(Lending lending)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Lendings.Remove(lending);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task AddToDb(Lending lending)
+    {
+        lending.ReturnDate = _returnDate.Value;
+        using var context = DbFactory.CreateDbContext();
+        if (_lendingService.IsMovieAvailable(context, lending.MovieId, lending.MovieFormat))
+        {
+            context.Lendings.Add(lending);
+        }
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private List<Lending> FilterByAssociation()
+    {
+        if (_associationId == 0) return _lendings.ToList();
+        else return @_lendings.Where(l => l.AssociationId == _associationId).ToList();
+    }
+
+    Task Send() =>
+        hubConnection.SendAsync("Send");
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}

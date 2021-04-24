@@ -1,0 +1,15 @@
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\SFF.Core.deps.json
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\SFF.Core.runtimeconfig.json
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\SFF.Core.runtimeconfig.dev.json
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\SFF.Core.dll
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\ref\SFF.Core.dll
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\bin\Debug\net5.0\SFF.Core.pdb
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.csprojAssemblyReference.cache
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.AssemblyInfoInputs.cache
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.AssemblyInfo.cs
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.csproj.CoreCompileInputs.cache
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.dll
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\ref\SFF.Core.dll
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.pdb
+C:\Users\rifri\OneDrive\Dokument\Program plugg\sff-RikardF\src\SFF.Core\obj\Debug\net5.0\SFF.Core.genruntimeconfig.cache

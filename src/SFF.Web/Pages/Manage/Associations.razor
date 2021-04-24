@@ -1,0 +1,195 @@
+@page "/Associations"
+@using SFF.Core.Entities
+@using SFF.Core.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IDbContextFactory<SFFDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.SignalR.Client
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Hantera föreningar</MudText>
+<AuthorizeView>
+    <NotAuthorized>
+        <MudText Typo="Typo.subtitle2" Color="Color.Dark" Class="ml-4 my-3">Du är inte inloggad</MudText>
+    </NotAuthorized>
+
+    <Authorized>
+        <MudTable Items="@_associations">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+                <col style="width: 10%;" />
+                <col style="width: 15%;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Namn</MudTh>
+                <MudTh>Adress</MudTh>
+                <MudTh>Postnummer</MudTh>
+                <MudTh>Ort</MudTh>
+                <MudTh>Telefonnummer</MudTh>
+                <MudTh>E-post</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="association">
+                <MudTd DataLabel="Id">@association.Id</MudTd>
+                <MudTd DataLabel="Name">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.Name
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Address">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.Address
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="ZipCode">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.ZipCode
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="City">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.City
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Phone">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.Phone
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Email">
+                    <MudItem>
+                        <MudTextField onchange="@UpdateDb(association)" @bind-Value=association.Email
+                            Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Delete">
+                    <MudIconButton OnClick="@(() => DeleteFromDb(association))" Icon="@Icons.Material.Filled.Delete"
+                        Color="Color.Error" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        <MudBadge />
+        <MudTable Items="@_newAssociation">
+            <ColGroup>
+                <col style="width: 15px;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+                <col style="width: 10%;" />
+                <col style="width: 15%;" />
+                <col style="width: 20%;" />
+                <col style="width: 20%;" />
+            </ColGroup>
+            <HeaderContent></HeaderContent>
+            <RowTemplate Context="newAssociation">
+                <MudTd DataLabel="Id"></MudTd>
+                <MudTd DataLabel="Name">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.Name Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Address">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.Address Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="ZipCode">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.ZipCode Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="City">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.City Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Phone">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.Phone Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Email">
+                    <MudItem>
+                        <MudTextField @bind-Value=newAssociation.Email Variant="Variant.Text"></MudTextField>
+                    </MudItem>
+                </MudTd>
+                <MudTd DataLabel="Add">
+                    <MudIconButton OnClick="@(() => AddToDb(newAssociation))" Icon="@Icons.Material.Filled.Add"
+                        Color="Color.Tertiary" Size="Size.Medium" Class="ma-2"></MudIconButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+
+    private IEnumerable<Association> _associations = new List<Association>();
+    private List<Association> _newAssociation = new List<Association>();
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/associationHub"))
+            .Build();
+        hubConnection.On("LaddaAldrigOmTack", async () =>
+        {
+            using var context = DbFactory.CreateDbContext();
+            _associations = await context.Associations.ToListAsync();
+            await InvokeAsync(() => StateHasChanged());
+        });
+        await hubConnection.StartAsync();
+        using var context = DbFactory.CreateDbContext();
+        _associations = await context.Associations.ToListAsync();
+        _newAssociation.Clear();
+        _newAssociation.Add(new Association());
+
+    }
+
+    private async Task UpdateDb(Association association)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Associations.Update(association);
+        await context.SaveChangesAsync();
+        await Send();
+    }
+
+    private async Task DeleteFromDb(Association association)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Associations.Remove(association);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    private async Task AddToDb(Association association)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Associations.Add(association);
+        await context.SaveChangesAsync();
+        await Send();
+        await OnInitializedAsync();
+    }
+
+    Task Send() =>
+        hubConnection.SendAsync("Send");
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}

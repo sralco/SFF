@@ -1,0 +1,82 @@
+@page "/Main"
+
+@using SFF.Core.Entities
+@using SFF.Core.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<SFFDbContext> DbFactory
+@inject IReviewService reviewService
+@inject ILendingService lendingService
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Översikt</MudText>
+<MudItem md="12">
+    <MudItem xs="12" md="6">
+        <MudPaper Width="100%">
+            <MudCard>
+                <MudCardContent>
+                    <MudSelect T="int" @bind-Value=@_movieId Label="Välj film">
+                        @foreach (var item in _movies)
+                        {
+                            <MudSelectItem Value=@item.Id>@item.Title</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudRating ReadOnly="true" SelectedValue="@GetAverageRating()" />
+                </MudCardContent>
+
+            </MudCard>
+        </MudPaper>
+        <MudBadge />
+        <MudPaper Width="100%">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" GutterBottom="true">I lager finns för närvarande:</MudText>
+                    <MudText Typo="Typo.h6" GutterBottom="true">@GetStockValue()[0] digitala exemplar</MudText>
+                    <MudText Typo="Typo.h6" GutterBottom="true">@GetStockValue()[1] fysiska exemplar</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudText Typo="Typo.h6" GutterBottom="true">Recensioner</MudText>
+        <MudPaper Width="100%">
+            <MudList>
+                @foreach (var item in _reviews.Where(r => r.MovieId == _movieId))
+                {
+                    <MudListItem Text=@item.Comment />
+                    <MudDivider />
+                }
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</MudItem>
+
+
+@code {
+    private IEnumerable<Review> _reviews = new List<Review>();
+    private IEnumerable<Movie> _movies = new List<Movie>();
+    private IReviewService _reviewService;
+    private ILendingService _lendingService;
+    private int _movieId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _reviewService = reviewService;
+        _lendingService = lendingService;
+        using var context = DbFactory.CreateDbContext();
+        _reviews = await context.Reviews.ToListAsync();
+        _movies = await context.Movies.ToListAsync();
+
+    }
+
+    private int GetAverageRating()
+    {
+        using var context = DbFactory.CreateDbContext();
+        return (int)Math.Round(_reviewService.CalculateAverageRating(context, _movieId));
+    }
+
+    private int[] GetStockValue()
+    {
+        using var context = DbFactory.CreateDbContext();
+        return _lendingService.HowManyInStock(context, _movieId);
+    }
+}
